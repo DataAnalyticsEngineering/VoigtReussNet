@@ -1,0 +1,61 @@
+[project]
+name            = "vrnn"
+version         = "0.1.0"
+description     = "Surrogates for microstructure–property linkages that inherently fulfill the Voigt-Reuss bounds."
+readme          = "README.md"
+requires-python = ">=3.12"
+license         = {text = "LGPL-3.0-or-later"}
+
+authors = [
+  {name = "Sanath Keshav", email = "keshav@mib.uni-stuttgart.de"},
+]
+
+keywords    = ["Constitutive modeling", "Composite materials", "Multiscale modeling", "Microstructure homogenization", "Neural networks", "Structure-property linkage", "Voigt-Reuss net", "Physics-constrained ML"]
+classifiers = [
+  "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+[dependencies]
+python = ">=3.12"
+
+[project.urls]
+Homepage   = "https://www.mib.uni-stuttgart.de/dae/"
+Repository = "https://github.com/DataAnalyticsEngineering/VoigtReussNet"
+Issues     = "https://github.com/DataAnalyticsEngineering/VoigtReussNet/issues"
+
+[build-system]
+requires      = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = ["vrnn", "README.md", "LICENSE"]
+
+
+###############################################################################
+# Pixi environment
+###############################################################################
+[tool.pixi.project]
+name      = "vrnn"
+channels  = ["conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[tool.pixi.dependencies]
+numpy = ">=2.3.0,<3"
+h5py = ">=3.14.0,<4"
+matplotlib = ">=3.10.3,<4"
+pytorch = ">=2.7.1,<3"
+torchinfo = ">=1.8.0,<2"
+torchvision = ">=0.22.0,<0.23"
+pre-commit = ">=4.2.0,<5"
+pip = ">=25.1.1,<26"
+ipykernel = ">=6.29.5,<7"
+scipy = ">=1.15.2,<2"
+plotly = "*"
+scikit-learn = ">=1.7.0,<2"
+
+[tool.pixi.pypi-dependencies]
+vrnn = { path = ".", editable = true }
+
+[tool.pixi.tasks]

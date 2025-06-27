@@ -1,0 +1,34 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Keshav
+  given-names: Sanath
+  orcid: "https://orcid.org/0000-0002-9131-4560"
+- family-names: Herb
+  given-names: Julius
+  orcid: "https://orcid.org/0000-0003-1628-6667"
+- family-names: Fritzen
+  given-names: Felix
+  orcid: "https://orcid.org/0000-0003-4926-0068"
+preferred-citation:
+  authors:
+  - family-names: Keshav
+    given-names: Sanath
+    orcid: "https://orcid.org/0000-0003-0477-3441"
+  - family-names: Herb
+    given-names: Julius
+    orcid: "https://orcid.org/0000-0003-0477-3441"
+  - family-names: Fritzen
+    given-names: Felix
+    orcid: "https://orcid.org/0000-0003-4926-0068"
+  # date-published: 2017-11-30
+  doi: 10.1002/gamm.70005
+  issn: 1522-2608
+  issue: 3
+  journal: GAMM Mitteilungen
+  publisher:
+    name: Wiley
+  title: "Spectral Normalization and Voigt-Reuss net: A universal approach to microstructure-property forecasting with physical guarantees"
+  type: article
+  url: "https://doi.org/10.1002/gamm.70005"
+  # volume: 62
+title: "Spectral Normalization and Voigt-Reuss net: A universal approach to microstructure-property forecasting with physical guarantees"
