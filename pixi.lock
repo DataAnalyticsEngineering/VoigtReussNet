@@ -7513,7 +7513,7 @@ packages:
 - pypi: ./
   name: vrnn
   version: 0.1.0
-  sha256: 6177dc3e801faf2d9d390b2d66a6f2f2176c1955c687a141db44b91bab72f516
+  sha256: bf2a1dc88370eef315fe627c7e0fec6b4ccf33ebb0abc81175fad9242781c2a8
   requires_python: '>=3.12'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/win-64/vs2015_runtime-14.44.35208-h38c0c73_26.conda
