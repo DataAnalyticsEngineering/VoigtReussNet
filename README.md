@@ -50,7 +50,7 @@ The [``examples/``](examples/) contains a collection of scripts and Jupyter note
 ### 3D Thermal Problem
 
 - [`train_vrnn_therm3d.py`](examples/Thermal_3D/train_vrnn_therm3d.py) : Voigt-Reuss network training script for 3D thermal homogenization problem.
-- [`train_vann_therm2d.py`](examples/Thermal_3D/train_vann_therm2d.py) : Vanilla neural network training script for 3D thermal homogenization problem.
+- [`train_vann_therm2d.py`](examples/Thermal_3D/train_vann_therm3d.py) : Vanilla neural network training script for 3D thermal homogenization problem.
 - [`eval_therm3d.ipynb`](examples/Thermal_3D/eval_therm3d.ipynb) : Evaluation and comparison of the trained models.
 
 ## Acknowledgments
