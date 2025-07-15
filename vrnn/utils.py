@@ -134,22 +134,17 @@ def batched_model_inference(dataset, model, batch_size=5000):
           model: The neural network model to use for inference
           batch_size: Number of samples to process at once
           
-      Returns:
-          tuple: (inputs, targets, predictions) as torch.Tensor objects
       """
-      all_preds, all_targets, all_inputs = [], [], []
+      all_preds = []
       
       with torch.inference_mode():
             for i in range(0, len(dataset), batch_size):
                   # Get batch data and run inference
                   batch_x, batch_y = default_collate_fn([dataset[j] for j in range(i, min(i + batch_size, len(dataset)))])
                   all_preds.append(model(batch_x))
-                  all_targets.append(batch_y)
-                  all_inputs.append(batch_x[1] if isinstance(batch_x, (tuple, list)) else batch_x)
-      
-      return torch.cat(all_inputs), torch.cat(all_targets), torch.cat(all_preds)
+                  
+      return torch.cat(all_preds)
   
-
 
 def default_collate_fn(batch):
     """ Collate function.

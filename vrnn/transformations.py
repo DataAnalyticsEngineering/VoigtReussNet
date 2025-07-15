@@ -3,7 +3,7 @@ Various data normalization and parametrization utilities.
 """
 import torch
 from vrnn.tensortools import get_sym_indices, pack_sym, unpack_sym
-import numpy as np
+from typing import Tuple
 
 class Transformation:
     """
@@ -105,22 +105,11 @@ class VoigtReussTransformation(Transformation):
 
         self.dof_idx = get_sym_indices(self.dim)
 
-    def transform(self, x, kappa0, kappa1, f1):
-        """
-        Transforms a batch of entries of heat conductivity tensors x with shape [..., dim * (dim + 1) / 2]
-        to a batch of normalized degrees of freedom vectors with shape [..., dim * (dim + 1) / 2]
-
-        :param x: batch of entries of heat conductivity tensors x with shape [..., dim * (dim + 1) / 2]
-        :return: batch of normalized degrees of freedom vectors with shape [..., dim * (dim + 1) / 2]
-        """
+    def transform(self, x, kappa_lb, kappa_ub):
         
         kappa = unpack_sym(x, self.dim, self.dof_idx)
 
-        f0 = 1. - f1
-        kappa_lb = (f0[..., None, None] * kappa0.inverse() + f1[..., None, None] * kappa1.inverse()).inverse()
-        kappa_ub = f0[..., None, None] * kappa0 + f1[..., None, None] * kappa1
-
-        L, L_inv = safe_cholesky(kappa_ub - kappa_lb)
+        _, L_inv = safe_cholesky(kappa_ub - kappa_lb)
         kappa_norm = L_inv @ (kappa_ub - kappa) @ (L_inv.transpose(-1, -2))
         eig_vals, Q = torch.linalg.eigh(kappa_norm)
         
@@ -141,18 +130,9 @@ class VoigtReussTransformation(Transformation):
 
         return normalized_kappa
 
-    def inverse_transform(self, x, kappa0, kappa1, f1):
-        """
-        Voigt Reuss normalization
+    def inverse_transform(self, x, kappa_lb, kappa_ub):
 
-        :param x: data to be normalized
-        """
-        f0 = 1.0 - f1
-
-        kappa_lb = (f0[..., None, None] * kappa0.inverse() + f1[..., None, None] * kappa1.inverse()).inverse()
-        kappa_ub = f0[..., None, None] * kappa0 + f1[..., None, None] * kappa1
-
-        L, L_inv = safe_cholesky(kappa_ub - kappa_lb)
+        L, _ = safe_cholesky(kappa_ub - kappa_lb)
 
         eigs_pred = self.eig_trafo.inverse_transform(x[..., :self.dim])
 
@@ -167,8 +147,6 @@ class VoigtReussTransformation(Transformation):
         
         kappa_dof = pack_sym(kappa_pred, self.dim, self.dof_idx)
         
-        # TODO: check the sign convention in the orthogonal parametrization
-        # kappa_dof[..., 2] *= -1
         return kappa_dof
 
 # def safe_cholesky(diff: torch.Tensor, verify: bool = False, rel_tol: float = 1e-9):
@@ -208,10 +186,8 @@ class VoigtReussTransformation(Transformation):
 #     return L, L_inv
 
 
-from typing import Tuple
 def safe_cholesky(diff: torch.Tensor,
-                  eps: float = 1e-12,
-                  max_tries: int = 5) -> Tuple[torch.Tensor, torch.Tensor]:
+                  jitter: float = 1e-6) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Returns
         L      : lower-triangular factor  
@@ -222,19 +198,11 @@ def safe_cholesky(diff: torch.Tensor,
 
     dim   = diff.shape[-1]
     eye   = torch.eye(dim, dtype=diff.dtype, device=diff.device)
-    jitter = 1e-6
-
-    for _ in range(max_tries):
-        try:
-            L = torch.linalg.cholesky(diff + jitter * eye)   # lower-tri
-            break
-        except RuntimeError as e:
-            if "not positive definite" not in str(e).lower():
-                raise
-            jitter = eps if jitter == 0.0 else jitter * 10.0
-    else:
-        raise RuntimeError("safe_cholesky: failed after adding jitter")
-
+    try:
+        L = torch.linalg.cholesky(diff + jitter * eye)   # lower-tri
+    except Exception:
+        raise RuntimeError("safe_cholesky: failed with jitter")
+    
     L_inv = torch.linalg.inv(L)
 
     return L, L_inv

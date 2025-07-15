@@ -1,6 +1,7 @@
 import torch
 from vrnn.transformations import OrthogonalTransformation
 import torch.nn as nn
+from vrnn.tensortools import unpack_sym
 
 class VoigtReussNormalizedLoss(nn.Module):
     def __init__(self, dim=6):
@@ -29,3 +30,32 @@ class VoigtReussNormalizedLoss(nn.Module):
         frob_norm_diff = torch.sqrt(torch.sum(diff * diff, dim=(-2, -1)))
         
         return torch.mean(frob_norm_diff) * self.onebydim_sqrt
+    
+class RelativeFrobeniusLoss(nn.Module):
+    def __init__(self, dim=6):
+        super().__init__()
+        self.dim = dim
+    
+    def forward(self, pred, truth):
+        
+        kappa_pred = unpack_sym(pred, dim=self.dim)
+        kappa_truth = unpack_sym(truth, dim=self.dim)
+
+        diff = kappa_pred - kappa_truth
+        frob_norm_diff = torch.sqrt(torch.sum(diff * diff, dim=(-2, -1)))
+        frob_norm_truth = torch.sqrt(torch.sum(kappa_truth * kappa_truth, dim=(-2, -1)))
+        relative_error = frob_norm_diff / frob_norm_truth
+        
+        return torch.mean(relative_error)
+
+    def sample_errors(self, pred, truth):
+        
+        kappa_pred = unpack_sym(pred, dim=self.dim)
+        kappa_truth = unpack_sym(truth, dim=self.dim)
+
+        diff = kappa_pred - kappa_truth
+        frob_norm_diff = torch.sqrt(torch.sum(diff * diff, dim=(-2, -1)))
+        frob_norm_truth = torch.sqrt(torch.sum(kappa_truth * kappa_truth, dim=(-2, -1)))
+        relative_error = frob_norm_diff / frob_norm_truth
+
+        return relative_error

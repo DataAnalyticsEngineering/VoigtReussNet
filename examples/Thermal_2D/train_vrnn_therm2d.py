@@ -4,8 +4,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchinfo import summary
 import matplotlib.pyplot as plt
-from vrnn.normalization import NormalizedDataset, NormalizationModule
-from vrnn.data_thermal import DatasetThermal, VoigtReussThermNormalization
+from vrnn.normalization import NormalizedDataset, NormalizationModule, SpectralNormalization
+from vrnn.data_thermal import DatasetThermal
 from vrnn.models import VanillaModule, MixedActivationMLP
 from vrnn import utils
 import numpy as np
@@ -19,18 +19,18 @@ dtype = torch.float32
 # %%
 # Load hdf5 files
 data_dir = utils.get_data_dir()
-ms_file = data_dir / 'feature_engineering_thermal_2D.h5'
-print(ms_file)
+h5_file = data_dir / 'feature_engineering_thermal_2D.h5'
+print(h5_file)
 
 # Load data
 feature_idx = None
 R_range_train = [1/100., 1/50., 1/20., 1/10., 1/5., 1/2., 2, 5, 10, 20, 50, 100]
-train_data = DatasetThermal(file_name=ms_file, R_range=R_range_train, group='train_set',
+train_data = DatasetThermal(file_name=h5_file, R_range=R_range_train, group='train_set',
                             input_mode='descriptors', feature_idx=feature_idx, feature_key='feature_vector', ndim=2)
 
 
 R_range_val = np.concatenate([np.arange(2, 101, dtype=int), 1. / np.arange(1, 101, dtype=int)])
-val_data = DatasetThermal(file_name=ms_file, R_range=R_range_val, group='val_set',
+val_data = DatasetThermal(file_name=h5_file, R_range=R_range_val, group='val_set',
                           input_mode='descriptors', feature_idx=feature_idx, feature_key='feature_vector', ndim=2)
 
 # Create dataloaders
@@ -46,7 +46,7 @@ in_dim, out_dim = train_data.features.shape[-1], train_data.targets.shape[-1]
 features_max = torch.cat([train_data.features, val_data.features], dim=0).max(dim=0)[0]
 features_min = torch.cat([train_data.features, val_data.features], dim=0).min(dim=0)[0]
 features_min[0],features_max[0]  = 0, 1 # Dont normalize the first feature (volume fraction)
-normalization = VoigtReussThermNormalization(dim=2, features_min=features_min, features_max=features_max)
+normalization = SpectralNormalization(dim=2, features_min=features_min, features_max=features_max, bounds_fn=train_data.calc_bounds)
 
 # Normalize data
 train_data_norm = NormalizedDataset(train_data, normalization)
@@ -61,7 +61,7 @@ ann_model = MixedActivationMLP(input_dim=in_dim, hidden_dims=[256, 128, 64, 32, 
                            output_activation=nn.Sigmoid(),
                            use_batch_norm=True)
 
-model_norm = VanillaModule(ann_model).to(device=device, dtype=dtype)
+model_norm = VanillaModule(ann_model).to(device=device)
 print(summary(model_norm, input_size=(batch_size, in_dim), dtypes=[dtype], device=device))
 
 loss_fn = VoigtReussNormalizedLoss(dim=2)

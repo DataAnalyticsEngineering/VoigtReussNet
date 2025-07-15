@@ -198,3 +198,9 @@ docs/build/
 *.h5
 junk/
 overleaf/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.pt
+*.ipynb
