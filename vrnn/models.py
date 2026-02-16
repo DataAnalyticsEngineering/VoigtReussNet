@@ -238,3 +238,109 @@ class CNNPlusScalars(nn.Module):
         
         return self.fc(combined)
     
+def _complex_dtype_from_float(dtype: torch.dtype) -> torch.dtype:
+    return torch.complex64 if dtype == torch.float32 else torch.complex128
+
+class RenderWrap2D(nn.Module):
+    """
+    Wraps CNNPlusScalars:
+      input  : (A, scalars) with A=[B,k,k], scalars=[B,2] -> [vf, th]
+      output : base_cnn((rendered_image [B,1,Ny,Nx], scalars))
+    """
+    def __init__(
+        self,
+        base_cnn: nn.Module,
+        img_size=(100, 100),
+        k_size: int = 11,                   # k_max used in dataset padding
+        temp: float = 0.05,
+        eps: float = 1e-12,
+        periodic_shift: bool = True,
+    ):
+        super().__init__()
+        self.base = base_cnn
+        self.Ny, self.Nx = img_size
+        self.k = k_size
+        self.temp = temp
+        self.eps = eps
+        self.periodic_shift = periodic_shift
+
+        # Fourier bases (registered as buffers; rebuilt on first forward to match device/dtype)
+        self.register_buffer("Vx", None, persistent=False)  # [k, Nx] complex
+        self.register_buffer("Vy", None, persistent=False)  # [k, Ny] complex
+        self.register_buffer("basis_dtype_flag", torch.tensor(0), persistent=False)  # sentinel
+
+    @torch.no_grad()
+    def _build_bases(self, device, fdt: torch.dtype):
+        """Build complex exponent bases for current device/dtype."""
+        cdt = _complex_dtype_from_float(fdt)
+        m = n = self.k
+
+        px = (torch.arange(m, device=device, dtype=fdt) - (m - 1) / 2)[:, None]  # [m,1]
+        qy = (torch.arange(n, device=device, dtype=fdt) - (n - 1) / 2)[:, None]  # [n,1]
+        x  = torch.linspace(-0.5, 0.5, self.Nx, device=device, dtype=fdt)[None, :]  # [1,Nx]
+        y  = torch.linspace(-0.5, 0.5, self.Ny, device=device, dtype=fdt)[None, :]  # [1,Ny]
+
+        phase_x = px @ x                         # [m,Nx], real
+        phase_y = qy @ y                         # [n,Ny], real
+        Vx = torch.exp(1j * 2 * torch.pi * phase_x).to(cdt)  # [m,Nx]
+        Vy = torch.exp(1j * 2 * torch.pi * phase_y).to(cdt)  # [n,Ny]
+
+        self.Vx = Vx
+        self.Vy = Vy
+        self.basis_dtype_flag = torch.tensor(1, device=device)  # just to mark "built"
+
+    def _ensure_bases(self, A: torch.Tensor):
+        """Rebuild bases if first call or device/dtype changed."""
+        need_build = (
+            (self.Vx is None) or (self.Vy is None)
+            or (self.Vx.device != A.device) or (self.Vy.device != A.device)
+            or (self.Vx.dtype  != _complex_dtype_from_float(A.dtype))
+            or (self.Vx.shape != (self.k, self.Nx))
+            or (self.Vy.shape != (self.k, self.Ny))
+        )
+        if need_build:
+            self._build_bases(A.device, A.dtype)
+
+    def _render(self, A: torch.Tensor, th: torch.Tensor):
+        """
+        A  : [B,k,k] real
+        th : [B] real
+        returns IMG, F_norm, F with shapes [B,Ny,Nx] (all real)
+        """
+        self._ensure_bases(A)
+        B = A.size(0)
+        cdt = self.Vx.dtype
+
+        # Synthesize field with cached bases
+        T  = torch.einsum('bmn,mx->bnx', A.to(cdt), self.Vx)    # [B,k,Nx] complex
+        Fc = torch.einsum('bnx,ny->bxy', T, self.Vy)            # [B,Nx,Ny] complex
+        F  = Fc.real.permute(0, 2, 1).contiguous()              # [B,Ny,Nx] real
+
+        # Min–max per sample over spatial dims
+        Fmin = F.amin(dim=(-2, -1), keepdim=True)
+        Fmax = F.amax(dim=(-2, -1), keepdim=True)
+        F_norm = (F - Fmin) / (Fmax - Fmin + self.eps)
+
+        # Differentiable threshold (sigmoid)
+        th = th.view(B, 1, 1).to(F.dtype)
+        IMG = torch.sigmoid((F_norm - th) / self.temp)          # [B,Ny,Nx]
+
+        if self.periodic_shift:
+            # one random periodic roll for the whole batch (fast & simple)
+            shift_y = torch.randint(0, self.Ny, (1,), device=F.device).item()
+            shift_x = torch.randint(0, self.Nx, (1,), device=F.device).item()
+            IMG = torch.roll(IMG, shifts=(shift_y, shift_x), dims=(-2, -1))
+
+        return IMG
+
+    def forward(self, inp):
+        """
+        inp = (A, scalars)
+          A: [B,k,k]
+          scalars: [B,2] -> [vf, th]
+        """
+        A, scalars = inp
+        th = scalars[:, 1]                       # use raw threshold for rendering
+        IMG = self._render(A, th)          # [B,Ny,Nx]
+        images = IMG.unsqueeze(1)                # [B,1,Ny,Nx]
+        return self.base((images, scalars))      # passthrough to CNNPlusScalars

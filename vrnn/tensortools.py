@@ -23,6 +23,16 @@ def Ciso(K: torch.Tensor, G: torch.Tensor) -> torch.Tensor:
     else:
         return (3. * K - 2. * G) * P1 + 2. * G * I6
 
+def IsoProjectionC(C_mandel):
+    if C_mandel.dim() == 2:
+        C_mandel = unpack_sym(C_mandel, dim=6)
+
+    K = C_mandel[:, :3, :3].mean(axis=(1, 2))
+    G = (torch.diagonal(C_mandel, dim1=1, dim2=2).sum(dim=1) - 3.*K) / 10.
+    
+    KG_concatenated = torch.stack((K, G), dim=1)
+    return  KG_concatenated
+
 
 
 

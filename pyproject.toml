@@ -36,7 +36,7 @@ include = ["vrnn", "README.md", "LICENSE"]
 ###############################################################################
 # Pixi environment
 ###############################################################################
-[tool.pixi.project]
+[tool.pixi.workspace]
 name      = "vrnn"
 channels  = ["conda-forge"]
 platforms = ["linux-64", "win-64", "linux-aarch64"]
@@ -54,8 +54,10 @@ ipykernel = "*"
 scipy = "*"
 scikit-learn = "*"
 pytorch-gpu = "*"
+pandas = "*"
+openpyxl = "*"
+scikit-image = "*"
 
 [tool.pixi.pypi-dependencies]
 vrnn = { path = ".", editable = true }
-
-[tool.pixi.tasks]
+homopy = ">=1.1.0, <2"

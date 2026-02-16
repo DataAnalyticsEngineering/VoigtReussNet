@@ -238,3 +238,54 @@ class CholeskyNormalization(Normalization):
             x_reconstructed = x_norm
 
         return x_reconstructed
+    
+class VanillaNormalization(Normalization):
+    def __init__(self,
+                 dim: int = 2,
+                 features_min: Optional[torch.Tensor] = None,
+                 features_max: Optional[torch.Tensor] = None,
+                 **kwargs):
+        super().__init__()
+        self.dim = dim
+        self.features_min = features_min
+        self.features_max = features_max
+        
+    def normalize_x(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Normalize each input feature to the range [0, 1].
+        """
+        if not isinstance(x, torch.Tensor):
+            raise TypeError("Input x must be a torch.Tensor")
+        if (self.features_min is not None) and (self.features_max is not None):
+            self.features_min = self.features_min.to(dtype=x.dtype, device=x.device)
+            self.features_max = self.features_max.to(dtype=x.dtype, device=x.device)
+            features_norm = (x - self.features_min) / (self.features_max - self.features_min)
+        else:
+            features_norm = x
+
+        return features_norm
+
+    def normalize_y(self, x, y, verify=True):
+        normalized_y = y
+                
+        return normalized_y
+
+    def reconstruct(self, x, normalized_y):
+        y_rec = normalized_y
+        
+        return y_rec
+    
+    def reconstruct_x(self, x_norm: torch.Tensor) -> torch.Tensor:
+        """
+        Reconstruct original input features from normalized [0, 1] range.
+        """
+        if not isinstance(x_norm, torch.Tensor):
+            raise TypeError("Input x_norm must be a torch.Tensor")
+        if (self.features_min is not None) and (self.features_max is not None):
+            self.features_min = self.features_min.to(dtype=x_norm.dtype, device=x_norm.device)
+            self.features_max = self.features_max.to(dtype=x_norm.dtype, device=x_norm.device)
+            x_reconstructed = x_norm * (self.features_max - self.features_min) + self.features_min
+        else:
+            x_reconstructed = x_norm
+
+        return x_reconstructed

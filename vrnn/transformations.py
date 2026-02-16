@@ -2,6 +2,7 @@
 Various data normalization and parametrization utilities.
 """
 import torch
+import torch.nn.functional as F
 from vrnn.tensortools import get_sym_indices, pack_sym, unpack_sym
 from typing import Tuple
 
@@ -186,8 +187,7 @@ class VoigtReussTransformation(Transformation):
 #     return L, L_inv
 
 
-def safe_cholesky(diff: torch.Tensor,
-                  jitter: float = 1e-6) -> Tuple[torch.Tensor, torch.Tensor]:
+def safe_cholesky(diff: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Returns
         L      : lower-triangular factor  
@@ -196,13 +196,6 @@ def safe_cholesky(diff: torch.Tensor,
     if diff.ndim < 2 or diff.shape[-1] != diff.shape[-2]:
         raise ValueError("diff must be batch of square matrices")
 
-    dim   = diff.shape[-1]
-    eye   = torch.eye(dim, dtype=diff.dtype, device=diff.device)
-    try:
-        L = torch.linalg.cholesky(diff + jitter * eye)   # lower-tri
-    except Exception:
-        raise RuntimeError("safe_cholesky: failed with jitter")
-    
-    L_inv = torch.linalg.inv(L)
-
+    L = torch.linalg.cholesky(diff) 
+    L_inv = torch.linalg.inv(L)    
     return L, L_inv

@@ -196,11 +196,15 @@ docs/build/
 
 *.out
 *.h5
+*.csv
 junk/
 overleaf/
+paper2/
 *.png
 *.jpg
 *.jpeg
 *.pdf
 *.pt
+*.pth
 *.ipynb
+hom_prop_2d.py
