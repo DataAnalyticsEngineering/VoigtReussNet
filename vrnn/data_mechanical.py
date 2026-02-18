@@ -11,8 +11,6 @@ from torch.utils.data import Dataset
 import os
 import random
 
-
-
 class Dataset3DMechanical(Dataset):
     def __init__(self, 
                  csv_file_path: str, 
@@ -31,7 +29,7 @@ class Dataset3DMechanical(Dataset):
         A PyTorch Dataset for 3D mechanical microstructure homogenization data.
         
         The final feature vector is formed by:
-        [selected_original_features, 1/alpha, 1/beta, 1/gamma, alpha, beta, gamma]
+        [selected_original_features, alpha, beta, gamma]
 
         The homogenized tangent is a 6x6 symmetric matrix. We extract its lower triangle 
         in the order:
@@ -117,7 +115,6 @@ class Dataset3DMechanical(Dataset):
             feature_vectors = feature_vectors[..., self.feature_idx]
 
             n_samples = len(self.sampled_entries)
-            # n_features = feature_vectors.shape[1] + 6  # original features + 6 additional
             n_features = feature_vectors.shape[1] + 3  # original features + 3 additional
             features_np = np.empty((n_samples, n_features), dtype=np.float64)
             tangents_np = np.empty((n_samples, 6, 6), dtype=np.float64)
@@ -131,7 +128,6 @@ class Dataset3DMechanical(Dataset):
                 features_np[idx] = np.concatenate([
                     feature_vectors[i,:],
                     [alpha, beta, gamma]
-                    # [1./alpha, 1./beta, 1./gamma, alpha, beta, gamma]
                 ])
                 ms_indices[idx] = i              
                 tangent_path = f"/{self.group}/effective_elasticity_tensor/dset_{i}/microstructure_image_results/{hash_str}/load0/time_step0/homogenized_tangent"
@@ -189,176 +185,14 @@ class Dataset3DMechanical(Dataset):
         lower_bound = (f0[..., None, None] * torch.linalg.inv(C0) + f1[..., None, None] * torch.linalg.inv(C1)).inverse()
         upper_bound =  f0[..., None, None] * C0 + f1[..., None, None] * C1
         
-        return lower_bound, upper_bound
-    
-class DatasetMechanical2D(Dataset):
-    def __init__(
-        self,
-        file_name: str,
-        group: str,
-        *,
-        contrast_keys: Sequence[str] = ("contrast_inf",),
-        input_mode: str = "descriptors",
-        feature_idx: Union[slice, Sequence[int], None] = None,
-        feature_key: str = "feature_vector",
-        image_key: str = "image_data",
-        device: Union[str, torch.device] = "cpu",
-        dtypes: Mapping[str, torch.dtype] = None,
-        periodic_data_augmentation: bool = True,
-        max_samples: Optional[int] = None,
-    ):
-        super().__init__()
-
-        self.file_name = file_name
-        self.group = group
-        self.contrast_keys = tuple(contrast_keys)
-        self.input_mode = input_mode
-        self.feature_idx = slice(None) if feature_idx is None else feature_idx
-        self.feature_key = feature_key
-        self.image_key = image_key
-        self.device = torch.device(device)
-
-        if dtypes is None:
-            dtypes = {
-                "images": torch.float32,
-                "features": torch.float32,
-                "targets": torch.float32,
-            }
-        self.dtypes = {k: v for k, v in dtypes.items()}
-
-        self.periodic_data_augmentation = periodic_data_augmentation
-        self.max_samples = max_samples
-
-        self.ndim = 2
-        self.n_str = 6
-
-        self._load()
-
-    def _load(self):
-        with h5py.File(self.file_name, "r") as F:
-            desc = torch.tensor(
-                F[f"{self.group}/{self.feature_key}"][...],
-                dtype=self.dtypes.get("features", torch.float32),
-                device=self.device,
-            )
-            desc = desc[..., self.feature_idx]
-            if self.max_samples is not None:
-                desc = desc[: self.max_samples]
-            n = desc.shape[0]
-
-            if self.input_mode == "images":
-                imgs = torch.tensor(
-                    F[f"{self.group}/{self.image_key}"][...],
-                    dtype=self.dtypes.get("images", torch.float32),
-                    device=self.device,
-                )
-                if self.max_samples is not None:
-                    imgs = imgs[: self.max_samples]
-                self.images = imgs.unsqueeze(1)
-                self.image_height = self.images.shape[-1]
-
-            features, targets = [], []
-            for key in self.contrast_keys:
-                tgt_path = f"{self.group}/effective_elasticity_tensor/{key}"
-                if tgt_path not in F:
-                    raise KeyError(
-                        f"Dataset key '{tgt_path}' not found in '{self.file_name}'."
-                    )
-                tgt = torch.tensor(
-                    F[tgt_path][...],
-                    dtype=self.dtypes.get("targets", torch.float32),
-                    device=self.device,
-                )
-                if self.max_samples is not None:
-                    tgt = tgt[: self.max_samples]
-                if tgt.shape[0] != n or tgt.shape[1] != self.n_str:
-                    raise ValueError(
-                        f"Expected target shape ({n}, {self.n_str}), got {tgt.shape}."
-                    )
-
-                features.append(desc)
-                targets.append(tgt)
-
-            self.features = torch.vstack(features)
-            self.targets = torch.vstack(targets)
-
-        self.num_samples = n
-        self.num_contrasts = len(self.contrast_keys)
-        self.length = self.num_samples * self.num_contrasts
-
-    def __len__(self):
-        return self.length
-
-    def __getitem__(self, idx):
-        """
-        Returns
-        -------
-        (features, targets)  if input_mode == 'descriptors'
-        ((image, features), targets)  if input_mode == 'images'
-        """
-        if self.input_mode == "descriptors":
-            return self.features[idx], self.targets[idx]
-
-        img_idx = idx % self.num_samples  # same image for every contrast
-        if self.periodic_data_augmentation:
-            shifts = torch.randint(
-                0, self.image_height, (2,), device=self.device
-            ).tolist()
-            img = torch.roll(
-                self.images[img_idx], shifts=shifts, dims=(1, 2)
-            )
-        else:
-            img = self.images[img_idx]
-
-        return (img, self.features[idx]), self.targets[idx]
-
-
-    def calc_bounds(
-        self,
-        features: torch.Tensor,
-    ):
-        if features.shape[-1] < 1:
-            raise ValueError("Column 0 must contain the phase-1 volume fraction f₁.")
-
-        f1 = features[..., 0]
-        f0 = 1.0 - f1
-        # --- build isotropic plane-stress stiffness matrices in Mandel notation -------------- #
-        # C = (E / (1 - nu^2)) * [[1, nu, 0],
-        #                        [nu, 1, 0],
-        #                        [0, 0, (1 - nu)/2 * 2]]
-        E0 = torch.tensor(1.0e-8, dtype=features.dtype, device=features.device)
-        E1 = torch.tensor(1.0, dtype=features.dtype, device=features.device)
-        nu_0 = torch.tensor(0.0, dtype=features.dtype, device=features.device)
-        nu_1 = torch.tensor(0.35, dtype=features.dtype, device=features.device)
-
-        fac0 = E0 / (1.0 - nu_0**2)
-        fac1 = E1 / (1.0 - nu_1**2)
-        C0 = torch.tensor(
-            [[1.0, nu_0, 0.0], [nu_0, 1.0, 0.0], [0.0, 0.0, (1.0 - nu_0)]],
-            dtype=features.dtype,
-            device=features.device,
-        ).mul(fac0)
-        C1 = torch.tensor(
-            [[1.0, nu_1, 0.0], [nu_1, 1.0, 0.0], [0.0, 0.0, (1.0 - nu_1)]],
-            dtype=features.dtype,
-            device=features.device,
-        ).mul(fac1)
-
-        eye = torch.eye(3, dtype=features.dtype, device=features.device)
-        C0 = C0.expand(f1.shape + (3, 3))
-        C1 = C1.expand(f1.shape + (3, 3))
-
-        upper = f0[..., None, None] * C0 + f1[..., None, None] * C1
-        lower = (f0[..., None, None] * torch.linalg.inv(C0) + f1[..., None, None] * torch.linalg.inv(C1)).inverse()
-
-        return lower, upper
+        return lower_bound, upper_bound    
 
 class SpinodoidMechanical2D(Dataset):
     def __init__(
         self,
         file_name: str,
         mode: str,
-        frequencies: list[int],
+        frequencies: list[tuple[int, int]],
         split: str,
         target_keys: list[str],
         device: str = "cpu",
@@ -385,7 +219,7 @@ class SpinodoidMechanical2D(Dataset):
         with h5py.File(file_name, "r") as F:
             # ------------ loop over requested frequency groups -------------
             for n in frequencies:
-                prefix = f"{split}/frequency_{n}"
+                prefix = f"{split}/mode_grid_{n[0]}x{n[1]}"
                 vfs.append(torch.as_tensor(F[f"{prefix}/volume_fraction"][...],
                                            dtype=dtypes["features"]).squeeze())
                 ths.append(torch.as_tensor(F[f"{prefix}/threshold"][...],

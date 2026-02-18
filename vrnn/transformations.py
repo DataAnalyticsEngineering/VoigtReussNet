@@ -162,30 +162,7 @@ class VoigtReussTransformation(Transformation):
 #     safe_inv_sqrt_eig_vals = torch.zeros_like(sqrt_eig_vals)
 #     safe_inv_sqrt_eig_vals[mask] = 1.0 / sqrt_eig_vals[mask]
 #     L_inv = safe_inv_sqrt_eig_vals[:, :, None] * Q.transpose(-2, -1)
-         
-#     if verify:
-#         # Verify reconstruction
-#         reconstructed_diff = torch.matmul(L, L.transpose(-1, -2))
-#         print(torch.allclose(diff, reconstructed_diff, rtol=1e-1))
-        
-#         abs_diff = torch.abs(diff - reconstructed_diff)
-#         max_diff = torch.max(abs_diff)
-#         mean_diff = torch.mean(abs_diff)
-#         print(f"Max absolute difference: {max_diff}")
-#         print(f"Mean absolute difference: {mean_diff}")
-        
-#         # Find locations of large differences
-#         large_diff_mask = abs_diff > 1e-4
-#         if torch.any(large_diff_mask):
-#             print("\nLocations with large differences:")
-#             large_diff_indices = torch.nonzero(large_diff_mask)
-#             for idx in large_diff_indices[:5]:  # Show first 5 differences
-#                 print(f"Index {idx}: Original={diff[tuple(idx)]:.6f}, Reconstructed={reconstructed_diff[tuple(idx)]:.6f}")
-        
-#         print(f"\nAllclose result: {torch.allclose(diff, reconstructed_diff, atol=1e-4)}")
-    
 #     return L, L_inv
-
 
 def safe_cholesky(diff: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """

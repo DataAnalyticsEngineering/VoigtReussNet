@@ -9,6 +9,8 @@
 Surrogates for microstructure–property linkages that inherently fulfill the Voigt-Reuss bounds.
 
 [![DOI](https://img.shields.io/badge/DOI-10.48550%2FarXiv.2511.11388-blue)](https://doi.org/10.48550/arXiv.2511.11388)
+[![DOI](https://img.shields.io/badge/DOI-10.18419%2FDARUS--5730-orange)](https://doi.org/10.18419/DARUS-5730)
+
 
 This repository contains the code and acts as an extension to the article: **"Robust inverse material design with physical guarantees using the Voigt-Reuss Net"** by Sanath Keshav and Felix Fritzen - [https://doi.org/10.48550/arXiv.2511.11388](https://doi.org/10.48550/arXiv.2511.11388). 
 
@@ -22,6 +24,8 @@ This repository contains the code and acts as an extension to the article: **"Sp
 Heterogeneous materials are crucial for producing lightweight, functional components and structures. A crucial step in the design process is the rapid evaluation of their effective mechanical, thermal, or, in general, constitutive properties. The established procedure is to use forward models that accept microstructure geometry and local constitutive properties as inputs. The classical simulation-based approach, e.g., using finite elements and FFT-based solvers, can require substantial computational resources. At the same time, simulation-based models struggle to provide gradients with respect to the microstructure and the constitutive parameters. Such gradients, however, are of paramount importance for microstructure design and for inverting the microstructure-property mapping. Machine learning surrogates can excel in these situations. However, they can lead to unphysical predictions that violate essential bounds on the constitutive response, such as the upper (Voigt-like) or the lower (Reuss-like) bound in linear elasticity. Therefore, we propose a novel spectral normalization scheme that enforces these bounds a priori. The approach is fully agnostic with respect to the chosen microstructural features and the utilized surrogate model: It can be linked to neural networks, kernel methods, or combined schemes. All of these will automatically and strictly predict outputs that obey the upper and lower bounds by construction. The technique can be used for any symmetric constitutive tensor with upper and lower bounds (in the Löwner sense), i.e., for permeability, thermal conductivity, linear elasticity, and many more.
 
 In this GitHub repository, we demonstrate the use of spectral normalization in the Voigt-Reuss net. Numerical examples on truly large datasets illustrate the improved accuracy, robustness, and independence of the input feature type.
+
+![ML Model Architecture](docs/ML_model.png)
 
 ## Installation
 

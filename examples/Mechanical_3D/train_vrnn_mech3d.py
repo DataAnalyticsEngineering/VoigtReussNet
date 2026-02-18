@@ -19,8 +19,8 @@ dtypes = {'features': torch.float64, 'targets': torch.float64, 'images': torch.f
 # %%
 # Load hdf5 files
 data_dir = utils.get_data_dir()
-h5_file = data_dir / 'feature_engineering_3D.h5'
-csv_file = data_dir /'FANS_3D.csv'
+h5_file = data_dir / 'feature_engineering_mechanical_3D.h5'
+csv_file = data_dir /'metadata_mechanical_3D.csv'
 
 train_data = Dataset3DMechanical(
     csv_file_path= csv_file,
@@ -31,10 +31,8 @@ train_data = Dataset3DMechanical(
     input_mode='descriptors',
     feature_idx= None,
     feature_key="feature_vector",
-    image_key="image_data_AvgPool3d_2x2x2",
     device=device,
     dtypes=dtypes,
-    periodic_data_augmentation=True
 )
 
 val_data = Dataset3DMechanical(
@@ -46,10 +44,8 @@ val_data = Dataset3DMechanical(
     input_mode='descriptors',
     feature_idx= None,
     feature_key="feature_vector",
-    image_key="image_data_AvgPool3d_2x2x2",
     device=device,
     dtypes=dtypes,
-    periodic_data_augmentation=True
 )
 
 # Create dataloaders

@@ -20,16 +20,18 @@ dtypes = {'images': torch.float32, 'features': torch.float32, 'targets': torch.f
 # %%
 # Load hdf5 files
 data_dir = utils.get_data_dir()
-h5_file = data_dir / 'spinodoids_plane_strain_mechanical_2D.h5'
+h5_file = data_dir / 'feature_engineering_mechanical_2D.h5'
 
+freqs = [(3,3), (5,5), (7,7), (9,9), (11,11)]
 # Load data
-train_target_keys = [f"/train_set/frequency_{i}/effective_elasticity_tensor/DM8530_TangoBlack" for i in range(1, 6)]
-train_data = SpinodoidMechanical2D(file_name=h5_file, mode = "coeffs", frequencies = [1,2,3,4,5], split = "train_set", 
+train_target_keys = [f"/train_set/mode_grid_{i}x{j}/effective_elasticity_tensor/DM8530_TangoBlack" for i, j in freqs]
+train_data = SpinodoidMechanical2D(file_name=h5_file, mode = "coeffs", frequencies = freqs, split = "train_set", 
                                    target_keys=train_target_keys, dtypes=dtypes, device=device)
 
-val_target_keys = [f"/val_set/frequency_{i}/effective_elasticity_tensor/DM8530_TangoBlack" for i in range(1, 6)]
-val_data = SpinodoidMechanical2D(file_name=h5_file, mode = "coeffs", frequencies = [1,2,3,4,5], split = "val_set", 
+val_target_keys = [f"/val_set/mode_grid_{i}x{j}/effective_elasticity_tensor/DM8530_TangoBlack" for i, j in freqs]
+val_data = SpinodoidMechanical2D(file_name=h5_file, mode = "coeffs", frequencies = freqs, split = "val_set", 
                                    target_keys=val_target_keys, dtypes=dtypes, device=device)
+
 # Create dataloaders
 batch_size = 15000
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, collate_fn=default_collate_fn)
@@ -75,5 +77,5 @@ plt.show()
 model = NormalizationModule(normalized_module=model_norm, normalization=normalization)
 
 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-torch.save(model, data_dir / f'Mechanical2D_models/spinodoids/spinodoid_weights_cholnn_{current_time}.pt')
-fig.savefig(data_dir / f'Mechanical2D_models/spinodoids/spinodoid_weights_cholnn_training_history_{current_time}.png', dpi=300)
+torch.save(model, data_dir / f'Mechanical2D_models/spinodoid_weights_cholnn_{current_time}.pt')
+fig.savefig(data_dir / f'Mechanical2D_models/spinodoid_weights_cholnn_training_history_{current_time}.png', dpi=300)
