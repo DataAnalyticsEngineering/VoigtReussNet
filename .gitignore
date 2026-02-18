@@ -208,3 +208,5 @@ paper2/
 *.pth
 *.ipynb
 hom_prop_2d.py
+
+!ML_model.png
